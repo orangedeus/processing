@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
+import tensorflow as tf
 import evaluate
 import cv2
 import time
@@ -10,6 +9,7 @@ import timeit
 import datetime
 import os
 from common import draw_str
+import gc
 """
 - dataset 1 process (splices) - # of splices
 - input # of splices - python video_counting.py --video dataset.mp4 --frames # - # of people per splice
@@ -30,6 +30,7 @@ def main():
 class FaceDetect:
     def __init__(self, video, weight, detect_interval, sleep_interval, play):
         self.weight = weight
+        self.video_file = video
         self.detect_interval = detect_interval
         self.sleep_interval = sleep_interval
         self.cap = cv2.VideoCapture(video)
@@ -46,7 +47,7 @@ class FaceDetect:
         fps = int(self.cap.get(cv2.CAP_PROP_FPS))
         frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
         self.detect_interval = frames // 4
-        print("[*] FPS: {}".format(fps))
+        print("[*] Filename: {}, FPS: {}".format(self.video_file, fps))
         while True:
             ret, frame = self.cap.read()
             bboxes = []
@@ -62,10 +63,11 @@ class FaceDetect:
 
                 for point in bboxes:
                     cv2.rectangle(frame, (point[0], point[1]), (point[2], point[3]), (255, 0, 0))
+                #cv2.imshow('Video', frame)
                 detect_end = timeit.default_timer()
                 print("\t Frame #: {}, # of people: {}, time elapsed: {}".format(i, self.count, detect_end - detect_start))
-            self.frames.append(frame)
-
+                self.frames.append(frame)
+            gc.collect()
             i += 1
 
         end = timeit.default_timer()
@@ -76,11 +78,12 @@ class FaceDetect:
         self.cap.release()
         cv2.destroyAllWindows()
         print("Time elapsed: {}, Max number of detected people: {}".format(self.time, self.max))
+        gc.collect()
 
     def generate_receipt(self):
-        dir = self.script_dir + "\\receipt.txt"
+        dir = self.script_dir + "/receipt.txt"
         with open(dir, "a") as f:
-            f.write(" Ran Tinyfaces - > fd.py < through Anaconda Environment.\n".format(datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
+            f.write(" Ran Tinyfaces - > fd.py < through Anaconda Environment.\n")
             f.close()
 
     def visualize(self, frame):

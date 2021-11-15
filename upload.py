@@ -1,8 +1,9 @@
 import requests
 import argparse
 
-UPLOAD_URL = 'http://localhost:3001/upload'
-INSERT_URL = 'http://localhost:3001/stops/insert'
+UPLOAD_URL = 'http://18.136.217.164:3001/upload'
+INSERT_URL = 'http://18.136.217.164:3001/stops/insert'
+INSERT2_URL = 'http://18.136.217.164:3001/stops/insert_screened'
 
 def upload(filename):
     with open(filename, 'rb') as f:
@@ -10,16 +11,31 @@ def upload(filename):
         r = requests.post(UPLOAD_URL, files=file)
         return(r)
 
-def insert(x, y, people, url):
+def insert(x, y, people, url, duration, route, batch, source_file):
     data = {
         'location': {
             'x': x,
             'y': y
         },
         'people': people,
-        'url': url
+        'url': url,
+        'duration': duration,
+        'route': route,
+        'batch': batch,
+        'source_file': source_file
     }
     r = requests.post(INSERT_URL, json=data)
+    return r
+
+def insert2(x, y, people):
+    data = {
+        'location': {
+            'x': x,
+            'y': y
+        },
+        'people': people
+    }
+    r = requests.post(INSERT2_URL, json=data)
     return r
 
 def main(filename):

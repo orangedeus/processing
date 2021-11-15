@@ -4,8 +4,8 @@ import argparse
 import os
 import shutil
 import timeit
-import fd
 import upload
+import gc
 
 def sign(x):
     if x > 0:
@@ -16,35 +16,39 @@ def sign(x):
         return 0
 
 class Screener:
-    def __init__(self, dir, out_gpx, out_vid, sens, noise, file):
+    def __init__(self, stops):
         self.script_dir = os.path.dirname(os.path.realpath(__file__))
-        self.directory = dir
-        self.output_gpx = self.script_dir + "\\" + out_gpx
-        self.output_vid = self.script_dir + "\\" + out_vid
-        self.sensitivity = sens
-        self.noise = noise
-        self.file = ''
-        self.people = 0
+        self.stops = stops
 
     def screen(self):
-
-        splices = os.listdir("speed")
+        #print(self.script_dir)
+        new_stops = []
         deletion = []
-        for i in splices:
-            curr_splice = self.script_dir + "\\speed\\" + i
+        for i in self.stops:
+            curr_splice = self.script_dir + "/speed/" + i["file"]
             splice_dur = self.get_duration(curr_splice)
             print('[*] ' + curr_splice)
             stops_splice, t = self.stops_by_freezedetect(self.freezedetect(curr_splice, 1, 28), splice_dur)
             stop_dur = self.get_splice_stop_dur(stops_splice)
+            print("\t{}".format(stops_splice))
             print("Splice duration: {}, Stop/freeze duration: {}".format(splice_dur, stop_dur))
             print("Valid stop?")
-            if (splice_dur - stop_dur > 1):
-                print("\tYes")
-            else:
+            if (splice_dur - stop_dur <= 1):
                 print("\tNo")
                 deletion.append(curr_splice)
-        return deletion
-            
+            else:
+                print("\tYes")
+                new_stops.append(i)
+
+        self.generate_receipt([i["file"] for i in new_stops])
+        gc.collect()
+        return new_stops, deletion
+
+    def generate_receipt(self, stops):
+        dir = self.script_dir + "/receipt.txt"
+        with open(dir, "a") as f:
+            f.write(" Screened splices - > freezedetect.py < - Result: {}.\n".format(stops))
+            f.close()  
 
     def get_splice_stop_dur(self, stops):
         total_stop_dur = 0
@@ -53,12 +57,6 @@ class Screener:
             start, end = int(start), int(end)
             total_stop_dur += end - start
         return total_stop_dur
-
-    def generate_receipt(self):
-        dir = self.script_dir + "\\receipt.txt"
-        with open(dir, "a") as f:
-            f.write("Date generated: {}\n Ran > process.py < through Anaconda Environment.\n".format(datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
-            f.close()
 
     def stop_sens(self, stop, sensitivity):
         start, end = stop.split(" ")
@@ -71,7 +69,7 @@ class Screener:
         stops, time = res
         new_stops = []
         prev_end = -1 * self.sensitivity
-        print(stops)
+        #print(stops)
         for i in stops:
             start, end = i["stop"].split(" ")
             start, end = int(start), int(end)
@@ -405,7 +403,7 @@ class Screener:
     def stops_by_freezedetect(self, tuple, duration):
         res, t_start = tuple
         start = res.find("[freezedetect")
-        list = res[start:].split("\r\n")
+        list = res[start:].split("\n")
         if (len(list) < 3):
             return [], timeit.default_timer() - t_start
         for i in range(3):
@@ -437,12 +435,4 @@ class Screener:
         return stops, t_end - t_start
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-D', '--directory', required=False, default=os.path.dirname(os.path.realpath(__file__)) + '\\data')
-    parser.add_argument('-O', '--output_vid', required=False, default='output.mov')
-    parser.add_argument('-OG', '--output_gpx', required=False, default='output.gpx')
-    parser.add_argument('-S', '--sensitivity', required=False, type=int, default=2)
-    parser.add_argument('-N', '--noise', required=False, default=35)
-    parser.add_argument('-F', '--file', required=False, default='')
-    args = parser.parse_args()
-    Process(dir=args.directory, out_vid=args.output_vid, out_gpx=args.output_gpx, sens=args.sensitivity, noise=args.noise, file=args.file).start()
+    Screener().screen()

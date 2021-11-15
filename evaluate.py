@@ -8,7 +8,6 @@ import cv2
 import scipy.io
 import numpy as np
 import matplotlib.pyplot as plt
-import cv2
 import pickle
 
 import pylab as pl
@@ -17,6 +16,8 @@ import os
 import sys
 from scipy.special import expit
 import glob
+
+import gc
 
 MAX_INPUT_DIM = 5000.0   
     
@@ -193,9 +194,6 @@ def evaluate(weight_file_path,  output_dir=None, data_dir=None, img=None, list_i
           temp.append(int(j))
         f_box.append(temp)
 
-      for i in f_box:
-        raw_img = cv2.rectangle(raw_img, (i[0], i[1]), (i[2], i[3]), (255, 0, 0))
-
       if display:
         # plt.axis('off')
         plt.imshow(raw_img)
@@ -210,4 +208,6 @@ def evaluate(weight_file_path,  output_dir=None, data_dir=None, img=None, list_i
 
   if len(final_bboxes) == 1:
     final_bboxes = final_bboxes[0]
+  del model
+  gc.collect()
   return f_box
